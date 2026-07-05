@@ -7,10 +7,16 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.example.javereporta.navigation.AppRoutes
+import com.example.javereporta.ui.screen.ForgotPasswordScreen
+import com.example.javereporta.ui.screen.InitialScreen
+import com.example.javereporta.ui.screen.LoginScreen
+import com.example.javereporta.ui.screen.RegisterScreen
 import com.example.javereporta.ui.theme.JaveReportaTheme
 
 class MainActivity : ComponentActivity() {
@@ -18,30 +24,35 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            var currentRoute by rememberSaveable { mutableStateOf(AppRoutes.SPLASH) }
+
             JaveReportaTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    when (currentRoute) {
+                        AppRoutes.LOGIN -> LoginScreen(
+                            onRegisterClick = { currentRoute = AppRoutes.REGISTER },
+                            onForgotPasswordClick = { currentRoute = AppRoutes.FORGOT_PASSWORD },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        AppRoutes.REGISTER -> RegisterScreen(
+                            onLoginClick = { currentRoute = AppRoutes.LOGIN },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        AppRoutes.FORGOT_PASSWORD -> ForgotPasswordScreen(
+                            onLoginClick = { currentRoute = AppRoutes.LOGIN },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        else -> InitialScreen(
+                            onLoginClick = { currentRoute = AppRoutes.LOGIN },
+                            onRegisterClick = { currentRoute = AppRoutes.REGISTER },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    JaveReportaTheme {
-        Greeting("Android")
     }
 }
