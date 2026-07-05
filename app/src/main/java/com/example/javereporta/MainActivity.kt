@@ -6,14 +6,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.javereporta.navigation.AppRoutes
+import com.example.javereporta.ui.screen.ConstructionScreen
 import com.example.javereporta.ui.screen.ForgotPasswordScreen
+import com.example.javereporta.ui.screen.HomeScreen
 import com.example.javereporta.ui.screen.InitialScreen
 import com.example.javereporta.ui.screen.LoginScreen
 import com.example.javereporta.ui.screen.RegisterScreen
@@ -27,11 +33,22 @@ class MainActivity : ComponentActivity() {
             var currentRoute by rememberSaveable { mutableStateOf(AppRoutes.SPLASH) }
 
             JaveReportaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        if (currentRoute in bottomNavigationRoutes) {
+                            JaveReportaBottomBar(
+                                currentRoute = currentRoute,
+                                onRouteSelected = { currentRoute = it }
+                            )
+                        }
+                    }
+                ) { innerPadding ->
                     when (currentRoute) {
                         AppRoutes.LOGIN -> LoginScreen(
                             onRegisterClick = { currentRoute = AppRoutes.REGISTER },
                             onForgotPasswordClick = { currentRoute = AppRoutes.FORGOT_PASSWORD },
+                            onLoginSuccess = { currentRoute = AppRoutes.HOME },
                             modifier = Modifier.padding(innerPadding)
                         )
 
@@ -45,6 +62,18 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
 
+                        AppRoutes.HOME -> HomeScreen(
+                            onOpenCampusMap = { currentRoute = AppRoutes.CAMPUS_MAP },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        AppRoutes.REPORTS_LIST,
+                        AppRoutes.PROFILE,
+                        AppRoutes.CAMPUS_MAP -> ConstructionScreen(
+                            onHomeClick = { currentRoute = AppRoutes.HOME },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
                         else -> InitialScreen(
                             onLoginClick = { currentRoute = AppRoutes.LOGIN },
                             onRegisterClick = { currentRoute = AppRoutes.REGISTER },
@@ -54,5 +83,39 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+private val bottomNavigationRoutes = setOf(
+    AppRoutes.HOME,
+    AppRoutes.REPORTS_LIST,
+    AppRoutes.PROFILE,
+    AppRoutes.CAMPUS_MAP
+)
+
+@Composable
+private fun JaveReportaBottomBar(
+    currentRoute: String,
+    onRouteSelected: (String) -> Unit
+) {
+    NavigationBar {
+        NavigationBarItem(
+            selected = currentRoute == AppRoutes.HOME,
+            onClick = { onRouteSelected(AppRoutes.HOME) },
+            icon = { Text(text = "I") },
+            label = { Text(text = "Inicio") }
+        )
+        NavigationBarItem(
+            selected = currentRoute == AppRoutes.REPORTS_LIST,
+            onClick = { onRouteSelected(AppRoutes.REPORTS_LIST) },
+            icon = { Text(text = "R") },
+            label = { Text(text = "Mis reportes") }
+        )
+        NavigationBarItem(
+            selected = currentRoute == AppRoutes.PROFILE,
+            onClick = { onRouteSelected(AppRoutes.PROFILE) },
+            icon = { Text(text = "P") },
+            label = { Text(text = "Mi perfil") }
+        )
     }
 }

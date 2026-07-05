@@ -9,6 +9,8 @@ object AppRoutes {
     const val CREATE_REPORT = "create_report"
     const val REPORTS_LIST = "reports_list"
     const val REPORT_DETAIL = "report_detail"
+    const val PROFILE = "profile"
+    const val CAMPUS_MAP = "campus_map"
 
     const val REPORT_ID_KEY = "reportId"
     const val REPORT_DETAIL_ROUTE = "$REPORT_DETAIL/{$REPORT_ID_KEY}"

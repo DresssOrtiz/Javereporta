@@ -30,6 +30,7 @@ import com.example.javereporta.ui.theme.JaveReportaTheme
 fun LoginScreen(
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
+    onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var email by remember { mutableStateOf("") }
@@ -85,10 +86,11 @@ fun LoginScreen(
             onClick = {
                 emailError = AuthValidation.validateEmail(email)
                 passwordError = AuthValidation.validatePassword(password)
-                successMessage = if (emailError == null && passwordError == null) {
-                    "Inicio de sesión válido."
+                if (emailError == null && passwordError == null) {
+                    successMessage = "Inicio de sesión válido."
+                    onLoginSuccess()
                 } else {
-                    null
+                    successMessage = null
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -118,7 +120,8 @@ private fun LoginScreenPreview() {
     JaveReportaTheme {
         LoginScreen(
             onRegisterClick = {},
-            onForgotPasswordClick = {}
+            onForgotPasswordClick = {},
+            onLoginSuccess = {}
         )
     }
 }
