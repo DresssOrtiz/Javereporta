@@ -1,8 +1,10 @@
 package com.example.javereporta.domain.model
 
 data class CreateReportDraft(
-    val title: String,
-    val description: String,
+    val buildingId: Int,
+    val buildingName: String,
+    val floorName: String,
+    val zoneName: String,
     val category: ReportCategory,
-    val location: LocationPoint?
+    val description: String
 )

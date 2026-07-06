@@ -18,11 +18,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.javereporta.navigation.AppRoutes
 import com.example.javereporta.ui.screen.ConstructionScreen
+import com.example.javereporta.ui.screen.CreateReportScreen
 import com.example.javereporta.ui.screen.ForgotPasswordScreen
 import com.example.javereporta.ui.screen.HomeScreen
 import com.example.javereporta.ui.screen.InitialScreen
 import com.example.javereporta.ui.screen.LoginScreen
 import com.example.javereporta.ui.screen.RegisterScreen
+import com.example.javereporta.ui.screen.ReportSuccessScreen
 import com.example.javereporta.ui.theme.JaveReportaTheme
 
 class MainActivity : ComponentActivity() {
@@ -64,6 +66,18 @@ class MainActivity : ComponentActivity() {
 
                         AppRoutes.HOME -> HomeScreen(
                             onOpenCampusMap = { currentRoute = AppRoutes.CAMPUS_MAP },
+                            onCreateReportClick = { currentRoute = AppRoutes.CREATE_REPORT },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        AppRoutes.CREATE_REPORT -> CreateReportScreen(
+                            onBackHomeClick = { currentRoute = AppRoutes.HOME },
+                            onReportPrepared = { currentRoute = AppRoutes.REPORT_SUCCESS },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        AppRoutes.REPORT_SUCCESS -> ReportSuccessScreen(
+                            onHomeClick = { currentRoute = AppRoutes.HOME },
                             modifier = Modifier.padding(innerPadding)
                         )
 

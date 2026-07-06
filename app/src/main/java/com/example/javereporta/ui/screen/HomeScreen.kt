@@ -36,6 +36,7 @@ private val CampusSoftBlue = Color(0xFFF5F8FC)
 @Composable
 fun HomeScreen(
     onOpenCampusMap: () -> Unit,
+    onCreateReportClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -64,7 +65,10 @@ fun HomeScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         CampusLocationCard()
-        QuickRoutesCard(onOpenCampusMap = onOpenCampusMap)
+        QuickRoutesCard(
+            onOpenCampusMap = onOpenCampusMap,
+            onCreateReportClick = onCreateReportClick
+        )
         CampusMapCard()
         Spacer(modifier = Modifier.height(8.dp))
     }
@@ -94,7 +98,10 @@ private fun CampusLocationCard() {
 }
 
 @Composable
-private fun QuickRoutesCard(onOpenCampusMap: () -> Unit) {
+private fun QuickRoutesCard(
+    onOpenCampusMap: () -> Unit,
+    onCreateReportClick: () -> Unit
+) {
     HomeCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -115,6 +122,13 @@ private fun QuickRoutesCard(onOpenCampusMap: () -> Unit) {
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = onCreateReportClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Reportar un problema")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = onOpenCampusMap,
             modifier = Modifier.fillMaxWidth()
@@ -175,6 +189,9 @@ private fun HomeCard(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun HomeScreenPreview() {
     JaveReportaTheme {
-        HomeScreen(onOpenCampusMap = {})
+        HomeScreen(
+            onOpenCampusMap = {},
+            onCreateReportClick = {}
+        )
     }
 }

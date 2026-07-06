@@ -7,6 +7,7 @@ object AppRoutes {
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
     const val CREATE_REPORT = "create_report"
+    const val REPORT_SUCCESS = "report_success"
     const val REPORTS_LIST = "reports_list"
     const val REPORT_DETAIL = "report_detail"
     const val PROFILE = "profile"
