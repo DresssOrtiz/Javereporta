@@ -31,6 +31,7 @@ import com.example.javereporta.ui.theme.JaveReportaTheme
 @Composable
 fun RegisterScreen(
     onLoginClick: () -> Unit,
+    onRegisterSuccess: (name: String, email: String, password: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var name by remember { mutableStateOf("") }
@@ -124,6 +125,14 @@ fun RegisterScreen(
                 emailError = AuthValidation.validateEmail(email)
                 passwordError = AuthValidation.validatePassword(password)
                 confirmPasswordError = AuthValidation.validateConfirmPassword(password, confirmPassword)
+                if (
+                    nameError == null &&
+                    emailError == null &&
+                    passwordError == null &&
+                    confirmPasswordError == null
+                ) {
+                    onRegisterSuccess(name.trim(), email.trim(), password)
+                }
                 successMessage = if (
                     nameError == null &&
                     emailError == null &&
@@ -157,6 +166,9 @@ fun RegisterScreen(
 @Composable
 private fun RegisterScreenPreview() {
     JaveReportaTheme {
-        RegisterScreen(onLoginClick = {})
+        RegisterScreen(
+            onLoginClick = {},
+            onRegisterSuccess = { _, _, _ -> }
+        )
     }
 }

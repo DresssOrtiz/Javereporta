@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.javereporta.domain.model.Report
 import com.example.javereporta.domain.model.ReportStatus
+import com.example.javereporta.domain.model.User
+import com.example.javereporta.domain.model.UserRole
 import com.example.javereporta.navigation.AppRoutes
 import com.example.javereporta.ui.screen.ConstructionScreen
 import com.example.javereporta.ui.screen.CreateReportScreen
@@ -27,7 +29,9 @@ import com.example.javereporta.ui.screen.EditReportScreen
 import com.example.javereporta.ui.screen.ForgotPasswordScreen
 import com.example.javereporta.ui.screen.HomeScreen
 import com.example.javereporta.ui.screen.InitialScreen
+import com.example.javereporta.ui.screen.LoginAttemptResult
 import com.example.javereporta.ui.screen.LoginScreen
+import com.example.javereporta.ui.screen.ProfileScreen
 import com.example.javereporta.ui.screen.RegisterScreen
 import com.example.javereporta.ui.screen.ReportDetailScreen
 import com.example.javereporta.ui.screen.ReportSuccessScreen
@@ -42,7 +46,10 @@ class MainActivity : ComponentActivity() {
             var currentRoute by rememberSaveable { mutableStateOf(AppRoutes.SPLASH) }
             var selectedReportId by rememberSaveable { mutableStateOf<String?>(null) }
             var nextReportNumber by remember { mutableStateOf(1) }
+            var nextUserNumber by remember { mutableStateOf(1) }
+            var currentUser by remember { mutableStateOf<User?>(null) }
             val reports = remember { mutableStateListOf<Report>() }
+            val registeredUsers = remember { mutableStateListOf<User>() }
 
             JaveReportaTheme {
                 Scaffold(
@@ -60,12 +67,41 @@ class MainActivity : ComponentActivity() {
                         AppRoutes.LOGIN -> LoginScreen(
                             onRegisterClick = { currentRoute = AppRoutes.REGISTER },
                             onForgotPasswordClick = { currentRoute = AppRoutes.FORGOT_PASSWORD },
-                            onLoginSuccess = { currentRoute = AppRoutes.HOME },
+                            onLoginAttempt = { email, password ->
+                                val user = registeredUsers.firstOrNull {
+                                    it.email.equals(email, ignoreCase = true)
+                                }
+                                when {
+                                    user == null -> LoginAttemptResult(
+                                        emailError = "No existe una cuenta registrada con este correo."
+                                    )
+                                    user.password != password -> LoginAttemptResult(
+                                        passwordError = "La contraseña no coincide."
+                                    )
+                                    else -> {
+                                        currentUser = user
+                                        currentRoute = AppRoutes.HOME
+                                        LoginAttemptResult()
+                                    }
+                                }
+                            },
                             modifier = Modifier.padding(innerPadding)
                         )
 
                         AppRoutes.REGISTER -> RegisterScreen(
                             onLoginClick = { currentRoute = AppRoutes.LOGIN },
+                            onRegisterSuccess = { name, email, password ->
+                                val user = User(
+                                    id = "local-user-${nextUserNumber++}",
+                                    name = name,
+                                    email = email,
+                                    password = password,
+                                    role = UserRole.USER
+                                )
+                                registeredUsers.add(user)
+                                currentUser = user
+                                currentRoute = AppRoutes.HOME
+                            },
                             modifier = Modifier.padding(innerPadding)
                         )
 
@@ -75,6 +111,7 @@ class MainActivity : ComponentActivity() {
                         )
 
                         AppRoutes.HOME -> HomeScreen(
+                            userName = currentUser?.name.orEmpty(),
                             onOpenCampusMap = { currentRoute = AppRoutes.CAMPUS_MAP },
                             onCreateReportClick = { currentRoute = AppRoutes.CREATE_REPORT },
                             modifier = Modifier.padding(innerPadding)
@@ -161,7 +198,29 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
 
-                        AppRoutes.PROFILE,
+                        AppRoutes.PROFILE -> ProfileScreen(
+                            name = currentUser?.name.orEmpty(),
+                            email = currentUser?.email.orEmpty(),
+                            role = currentUser?.role ?: UserRole.USER,
+                            sessionStatus = if (currentUser == null) "Sin sesion" else "Activa",
+                            onNameChange = { newName ->
+                                val user = currentUser
+                                if (user != null) {
+                                    val updatedUser = user.copy(name = newName)
+                                    currentUser = updatedUser
+                                    val userIndex = registeredUsers.indexOfFirst { it.id == user.id }
+                                    if (userIndex >= 0) {
+                                        registeredUsers[userIndex] = updatedUser
+                                    }
+                                }
+                            },
+                            onLogoutClick = {
+                                currentUser = null
+                                currentRoute = AppRoutes.LOGIN
+                            },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
                         AppRoutes.CAMPUS_MAP -> ConstructionScreen(
                             onHomeClick = { currentRoute = AppRoutes.HOME },
                             modifier = Modifier.padding(innerPadding)

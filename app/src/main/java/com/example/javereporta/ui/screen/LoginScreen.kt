@@ -30,7 +30,7 @@ import com.example.javereporta.ui.theme.JaveReportaTheme
 fun LoginScreen(
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onLoginSuccess: () -> Unit,
+    onLoginAttempt: (email: String, password: String) -> LoginAttemptResult,
     modifier: Modifier = Modifier
 ) {
     var email by remember { mutableStateOf("") }
@@ -88,7 +88,12 @@ fun LoginScreen(
                 passwordError = AuthValidation.validatePassword(password)
                 if (emailError == null && passwordError == null) {
                     successMessage = "Inicio de sesión válido."
-                    onLoginSuccess()
+                    val loginResult = onLoginAttempt(email.trim(), password)
+                    emailError = loginResult.emailError
+                    passwordError = loginResult.passwordError
+                    if (!loginResult.isSuccess) {
+                        successMessage = null
+                    }
                 } else {
                     successMessage = null
                 }
@@ -114,6 +119,14 @@ fun LoginScreen(
     }
 }
 
+data class LoginAttemptResult(
+    val emailError: String? = null,
+    val passwordError: String? = null
+) {
+    val isSuccess: Boolean
+        get() = emailError == null && passwordError == null
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun LoginScreenPreview() {
@@ -121,7 +134,7 @@ private fun LoginScreenPreview() {
         LoginScreen(
             onRegisterClick = {},
             onForgotPasswordClick = {},
-            onLoginSuccess = {}
+            onLoginAttempt = { _, _ -> LoginAttemptResult() }
         )
     }
 }

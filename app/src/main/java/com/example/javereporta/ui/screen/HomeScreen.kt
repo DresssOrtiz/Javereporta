@@ -35,6 +35,7 @@ private val CampusSoftBlue = Color(0xFFF5F8FC)
 
 @Composable
 fun HomeScreen(
+    userName: String,
     onOpenCampusMap: () -> Unit,
     onCreateReportClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -54,8 +55,7 @@ fun HomeScreen(
             color = CampusBlue
         )
         Text(
-            // Aqui se mostrara el nombre del usuario autenticado cuando exista persistencia.
-            text = "Hola",
+            text = if (userName.isBlank()) "Hola" else "Hola, $userName",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
@@ -190,6 +190,7 @@ private fun HomeCard(content: @Composable ColumnScope.() -> Unit) {
 private fun HomeScreenPreview() {
     JaveReportaTheme {
         HomeScreen(
+            userName = "Usuario JaveReporta",
             onOpenCampusMap = {},
             onCreateReportClick = {}
         )
