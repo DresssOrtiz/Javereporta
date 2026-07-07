@@ -10,6 +10,7 @@ object AppRoutes {
     const val REPORT_SUCCESS = "report_success"
     const val REPORTS_LIST = "reports_list"
     const val REPORT_DETAIL = "report_detail"
+    const val EDIT_REPORT = "edit_report"
     const val PROFILE = "profile"
     const val CAMPUS_MAP = "campus_map"
 

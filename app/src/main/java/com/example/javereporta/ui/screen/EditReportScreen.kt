@@ -28,27 +28,54 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.javereporta.domain.model.BuildingCatalog
-import com.example.javereporta.domain.model.BuildingFloor
-import com.example.javereporta.domain.model.BuildingInfo
-import com.example.javereporta.domain.model.CreateReportDraft
+import com.example.javereporta.domain.model.Report
 import com.example.javereporta.domain.model.ReportCategory
+import com.example.javereporta.domain.model.ReportStatus
 import com.example.javereporta.ui.theme.JaveReportaTheme
 
 @Composable
-fun CreateReportScreen(
-    onBackHomeClick: () -> Unit,
-    onReportPrepared: (CreateReportDraft) -> Unit,
+fun EditReportScreen(
+    report: Report?,
+    onBackClick: () -> Unit,
+    onSaveReport: (
+        reportId: String,
+        buildingId: Int,
+        buildingName: String,
+        floorName: String,
+        zoneName: String,
+        description: String
+    ) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedBuilding by remember { mutableStateOf<BuildingInfo?>(null) }
-    var selectedFloor by remember { mutableStateOf<BuildingFloor?>(null) }
-    var selectedZone by remember { mutableStateOf<String?>(null) }
-    var selectedCategory by remember { mutableStateOf<ReportCategory?>(null) }
-    var description by remember { mutableStateOf("") }
+    if (report == null) {
+        MissingReportContent(
+            onBackClick = onBackClick,
+            modifier = modifier
+        )
+        return
+    }
+
+    if (report.status != ReportStatus.ABIERTO || report.hasBeenEdited) {
+        EditUnavailableContent(
+            onBackClick = onBackClick,
+            modifier = modifier
+        )
+        return
+    }
+
+    val initialBuilding = remember(report.id) {
+        BuildingCatalog.buildings.firstOrNull { it.id == report.buildingId }
+    }
+    val initialFloor = remember(report.id, initialBuilding) {
+        initialBuilding?.floors?.firstOrNull { it.name == report.floorName }
+    }
+    var selectedBuilding by remember(report.id) { mutableStateOf(initialBuilding) }
+    var selectedFloor by remember(report.id) { mutableStateOf(initialFloor) }
+    var selectedZone by remember(report.id) { mutableStateOf(report.zoneName) }
+    var description by remember(report.id) { mutableStateOf(report.description) }
     var buildingError by remember { mutableStateOf<String?>(null) }
     var floorError by remember { mutableStateOf<String?>(null) }
     var zoneError by remember { mutableStateOf<String?>(null) }
-    var categoryError by remember { mutableStateOf<String?>(null) }
     var descriptionError by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -59,12 +86,12 @@ fun CreateReportScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
-            text = "Nuevo reporte",
+            text = "Editar reporte",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Describe la novedad para preparar el reporte.",
+            text = "Puedes cambiar la ubicacion y la descripcion una sola vez.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -77,7 +104,7 @@ fun CreateReportScreen(
             onOptionSelected = {
                 selectedBuilding = it
                 selectedFloor = null
-                selectedZone = null
+                selectedZone = ""
                 buildingError = null
                 floorError = null
                 zoneError = null
@@ -93,7 +120,7 @@ fun CreateReportScreen(
             enabled = selectedBuilding != null,
             onOptionSelected = {
                 selectedFloor = it
-                selectedZone = null
+                selectedZone = ""
                 floorError = null
                 zoneError = null
             }
@@ -112,26 +139,13 @@ fun CreateReportScreen(
             }
         )
         zoneError?.let { FieldError(text = it) }
-        Text(
-            text = "Categoría del problema",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold
-        )
-        CategorySelector(
-            selectedCategory = selectedCategory,
-            onCategorySelected = {
-                selectedCategory = it
-                categoryError = null
-            }
-        )
-        categoryError?.let { FieldError(text = it) }
         OutlinedTextField(
             value = description,
             onValueChange = {
                 description = it
                 descriptionError = null
             },
-            label = { Text(text = "Descripción") },
+            label = { Text(text = "Descripcion") },
             isError = descriptionError != null,
             supportingText = { descriptionError?.let { Text(text = it) } },
             minLines = 4,
@@ -140,63 +154,102 @@ fun CreateReportScreen(
         Spacer(modifier = Modifier.height(4.dp))
         Button(
             onClick = {
-                buildingError = if (selectedBuilding == null) {
+                val building = selectedBuilding
+                val floor = selectedFloor
+                val trimmedZone = selectedZone.trim()
+                val trimmedDescription = description.trim()
+                buildingError = if (building == null) {
                     "Selecciona el edificio o lugar."
                 } else {
                     null
                 }
-                floorError = if (selectedFloor == null) {
+                floorError = if (floor == null) {
                     "Selecciona el piso."
                 } else {
                     null
                 }
-                zoneError = if (selectedZone == null) {
+                zoneError = if (trimmedZone.isEmpty()) {
                     "Selecciona la zona o espacio."
                 } else {
                     null
                 }
-                categoryError = if (selectedCategory == null) {
-                    "Selecciona una categoría."
-                } else {
-                    null
-                }
-                descriptionError = if (description.trim().length < 10) {
-                    "La descripción debe tener al menos 10 caracteres."
+                descriptionError = if (trimmedDescription.length < 10) {
+                    "La descripcion debe tener al menos 10 caracteres."
                 } else {
                     null
                 }
 
-                val building = selectedBuilding
-                val floor = selectedFloor
-                val zone = selectedZone
-                val category = selectedCategory
                 if (
                     building != null &&
                     floor != null &&
-                    zone != null &&
-                    category != null &&
+                    zoneError == null &&
                     descriptionError == null
                 ) {
-                    val draft = CreateReportDraft(
-                        buildingId = building.id,
-                        buildingName = building.name,
-                        floorName = floor.name,
-                        zoneName = zone,
-                        category = category,
-                        description = description.trim()
+                    onSaveReport(
+                        report.id,
+                        building.id,
+                        building.name,
+                        floor.name,
+                        trimmedZone,
+                        trimmedDescription
                     )
-                    onReportPrepared(draft)
                 }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Enviar reporte")
+            Text(text = "Guardar cambios")
         }
         TextButton(
-            onClick = onBackHomeClick,
+            onClick = onBackClick,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Volver a Inicio")
+            Text(text = "Volver")
+        }
+    }
+}
+
+@Composable
+private fun EditUnavailableContent(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(text = "Este reporte ya no se puede editar.")
+        Button(
+            onClick = onBackClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        ) {
+            Text(text = "Volver")
+        }
+    }
+}
+
+@Composable
+private fun MissingReportContent(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(text = "No se encontro el reporte.")
+        Button(
+            onClick = onBackClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        ) {
+            Text(text = "Volver")
         }
     }
 }
@@ -255,41 +308,24 @@ private fun FieldError(text: String) {
     )
 }
 
-@Composable
-private fun CategorySelector(
-    selectedCategory: ReportCategory?,
-    onCategorySelected: (ReportCategory) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ReportCategory.entries.forEach { category ->
-            val selected = selectedCategory == category
-            val label = category.label()
-            if (selected) {
-                Button(
-                    onClick = { onCategorySelected(category) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = label)
-                }
-            } else {
-                OutlinedButton(
-                    onClick = { onCategorySelected(category) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = label)
-                }
-            }
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
-private fun CreateReportScreenPreview() {
+private fun EditReportScreenPreview() {
     JaveReportaTheme {
-        CreateReportScreen(
-            onBackHomeClick = {},
-            onReportPrepared = {}
+        EditReportScreen(
+            report = Report(
+                id = "local-1",
+                buildingId = 0,
+                buildingName = "Biblioteca Alfonso Barrero Cabal",
+                floorName = "Piso 1",
+                zoneName = "Entrada",
+                category = ReportCategory.OTHER,
+                description = "Puerta principal con problema reportado.",
+                status = ReportStatus.ABIERTO,
+                createdAtMillis = 0L
+            ),
+            onBackClick = {},
+            onSaveReport = { _, _, _, _, _, _ -> }
         )
     }
 }

@@ -12,19 +12,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.example.javereporta.domain.model.Report
+import com.example.javereporta.domain.model.ReportStatus
 import com.example.javereporta.navigation.AppRoutes
 import com.example.javereporta.ui.screen.ConstructionScreen
 import com.example.javereporta.ui.screen.CreateReportScreen
+import com.example.javereporta.ui.screen.EditReportScreen
 import com.example.javereporta.ui.screen.ForgotPasswordScreen
 import com.example.javereporta.ui.screen.HomeScreen
 import com.example.javereporta.ui.screen.InitialScreen
 import com.example.javereporta.ui.screen.LoginScreen
 import com.example.javereporta.ui.screen.RegisterScreen
+import com.example.javereporta.ui.screen.ReportDetailScreen
 import com.example.javereporta.ui.screen.ReportSuccessScreen
+import com.example.javereporta.ui.screen.ReportsListScreen
 import com.example.javereporta.ui.theme.JaveReportaTheme
 
 class MainActivity : ComponentActivity() {
@@ -33,6 +40,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             var currentRoute by rememberSaveable { mutableStateOf(AppRoutes.SPLASH) }
+            var selectedReportId by rememberSaveable { mutableStateOf<String?>(null) }
+            var nextReportNumber by remember { mutableStateOf(1) }
+            val reports = remember { mutableStateListOf<Report>() }
 
             JaveReportaTheme {
                 Scaffold(
@@ -72,7 +82,23 @@ class MainActivity : ComponentActivity() {
 
                         AppRoutes.CREATE_REPORT -> CreateReportScreen(
                             onBackHomeClick = { currentRoute = AppRoutes.HOME },
-                            onReportPrepared = { currentRoute = AppRoutes.REPORT_SUCCESS },
+                            onReportPrepared = { draft ->
+                                reports.add(
+                                    index = 0,
+                                    element = Report(
+                                        id = "local-${nextReportNumber++}",
+                                        buildingId = draft.buildingId,
+                                        buildingName = draft.buildingName,
+                                        floorName = draft.floorName,
+                                        zoneName = draft.zoneName,
+                                        category = draft.category,
+                                        description = draft.description,
+                                        status = ReportStatus.ABIERTO,
+                                        createdAtMillis = System.currentTimeMillis()
+                                    )
+                                )
+                                currentRoute = AppRoutes.REPORT_SUCCESS
+                            },
                             modifier = Modifier.padding(innerPadding)
                         )
 
@@ -81,7 +107,60 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
 
-                        AppRoutes.REPORTS_LIST,
+                        AppRoutes.REPORTS_LIST -> ReportsListScreen(
+                            reports = reports,
+                            onReportClick = {
+                                selectedReportId = it
+                                currentRoute = AppRoutes.REPORT_DETAIL
+                            },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        AppRoutes.REPORT_DETAIL -> ReportDetailScreen(
+                            report = reports.firstOrNull { it.id == selectedReportId },
+                            onBackClick = { currentRoute = AppRoutes.REPORTS_LIST },
+                            onEditReport = {
+                                selectedReportId = it
+                                currentRoute = AppRoutes.EDIT_REPORT
+                            },
+                            onCancelReport = { reportId ->
+                                val reportIndex = reports.indexOfFirst { it.id == reportId }
+                                if (reportIndex >= 0) {
+                                    reports[reportIndex] = reports[reportIndex].copy(
+                                        status = ReportStatus.CANCELADO
+                                    )
+                                }
+                            },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        AppRoutes.EDIT_REPORT -> EditReportScreen(
+                            report = reports.firstOrNull { it.id == selectedReportId },
+                            onBackClick = { currentRoute = AppRoutes.REPORT_DETAIL },
+                            onSaveReport = {
+                                reportId,
+                                buildingId,
+                                buildingName,
+                                floorName,
+                                zoneName,
+                                description ->
+                                val reportIndex = reports.indexOfFirst { it.id == reportId }
+                                if (reportIndex >= 0) {
+                                    reports[reportIndex] = reports[reportIndex].copy(
+                                        buildingId = buildingId,
+                                        buildingName = buildingName,
+                                        floorName = floorName,
+                                        zoneName = zoneName,
+                                        description = description,
+                                        hasBeenEdited = true
+                                    )
+                                }
+                                selectedReportId = reportId
+                                currentRoute = AppRoutes.REPORT_DETAIL
+                            },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
                         AppRoutes.PROFILE,
                         AppRoutes.CAMPUS_MAP -> ConstructionScreen(
                             onHomeClick = { currentRoute = AppRoutes.HOME },
