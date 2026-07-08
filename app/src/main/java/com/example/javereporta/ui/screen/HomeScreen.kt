@@ -2,7 +2,6 @@ package com.example.javereporta.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -21,13 +20,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.javereporta.data.CampusGeoJsonRepository
 import com.example.javereporta.ui.theme.JaveReportaTheme
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Polygon
+import com.google.maps.android.compose.rememberCameraPositionState
 
 private val CampusBlue = Color(0xFF0B2D5B)
 private val CampusLightBlue = Color(0xFFEAF1FA)
@@ -64,12 +71,10 @@ fun HomeScreen(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        CampusLocationCard()
         QuickRoutesCard(
-            onOpenCampusMap = onOpenCampusMap,
             onCreateReportClick = onCreateReportClick
         )
-        CampusMapCard()
+        CampusMapCard(onOpenCampusMap = onOpenCampusMap)
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
@@ -99,7 +104,6 @@ private fun CampusLocationCard() {
 
 @Composable
 private fun QuickRoutesCard(
-    onOpenCampusMap: () -> Unit,
     onCreateReportClick: () -> Unit
 ) {
     HomeCard {
@@ -128,18 +132,19 @@ private fun QuickRoutesCard(
         ) {
             Text(text = "Reportar un problema")
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = onOpenCampusMap,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Ver mapa del campus")
-        }
     }
 }
 
 @Composable
-private fun CampusMapCard() {
+private fun CampusMapCard(onOpenCampusMap: () -> Unit) {
+    val context = LocalContext.current
+    val repository = remember { CampusGeoJsonRepository(context) }
+    val mapBuildings = remember { repository.loadBuildings() }
+    val campusCenter = remember(mapBuildings) { repository.campusCenter(mapBuildings) }
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(campusCenter, 16f)
+    }
+
     HomeCard {
         Text(
             text = "Mapa del campus",
@@ -154,19 +159,39 @@ private fun CampusMapCard() {
             color = CampusLightBlue,
             shape = RoundedCornerShape(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                uiSettings = MapUiSettings(
+                    compassEnabled = false,
+                    mapToolbarEnabled = false,
+                    myLocationButtonEnabled = false,
+                    rotationGesturesEnabled = false,
+                    scrollGesturesEnabled = false,
+                    tiltGesturesEnabled = false,
+                    zoomControlsEnabled = false,
+                    zoomGesturesEnabled = false
+                ),
+                onMapClick = { onOpenCampusMap() }
             ) {
-                Text(
-                    text = "Espacio reservado para el mapa del campus",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = CampusBlue,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                mapBuildings.forEach { building ->
+                    Polygon(
+                        points = building.polygon,
+                        clickable = true,
+                        fillColor = Color(0x402D5B9A),
+                        strokeColor = CampusBlue,
+                        strokeWidth = 2f,
+                        onClick = { onOpenCampusMap() }
+                    )
+                }
             }
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Toca el mapa para abrirlo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

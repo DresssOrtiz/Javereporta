@@ -38,9 +38,12 @@ import com.example.javereporta.ui.theme.JaveReportaTheme
 fun CreateReportScreen(
     onBackHomeClick: () -> Unit,
     onReportPrepared: (CreateReportDraft) -> Unit,
+    initialBuildingId: Int? = null,
     modifier: Modifier = Modifier
 ) {
-    var selectedBuilding by remember { mutableStateOf<BuildingInfo?>(null) }
+    var selectedBuilding by remember(initialBuildingId) {
+        mutableStateOf(BuildingCatalog.buildings.firstOrNull { it.id == initialBuildingId })
+    }
     var selectedFloor by remember { mutableStateOf<BuildingFloor?>(null) }
     var selectedZone by remember { mutableStateOf<String?>(null) }
     var selectedCategory by remember { mutableStateOf<ReportCategory?>(null) }

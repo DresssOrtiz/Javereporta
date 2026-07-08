@@ -23,7 +23,7 @@ import com.example.javereporta.domain.model.ReportStatus
 import com.example.javereporta.domain.model.User
 import com.example.javereporta.domain.model.UserRole
 import com.example.javereporta.navigation.AppRoutes
-import com.example.javereporta.ui.screen.ConstructionScreen
+import com.example.javereporta.ui.screen.CampusMapScreen
 import com.example.javereporta.ui.screen.CreateReportScreen
 import com.example.javereporta.ui.screen.EditReportScreen
 import com.example.javereporta.ui.screen.ForgotPasswordScreen
@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var currentRoute by rememberSaveable { mutableStateOf(AppRoutes.SPLASH) }
             var selectedReportId by rememberSaveable { mutableStateOf<String?>(null) }
+            var pendingReportBuildingId by rememberSaveable { mutableStateOf<Int?>(null) }
             var nextReportNumber by remember { mutableStateOf(1) }
             var nextUserNumber by remember { mutableStateOf(1) }
             var currentUser by remember { mutableStateOf<User?>(null) }
@@ -113,12 +114,18 @@ class MainActivity : ComponentActivity() {
                         AppRoutes.HOME -> HomeScreen(
                             userName = currentUser?.name.orEmpty(),
                             onOpenCampusMap = { currentRoute = AppRoutes.CAMPUS_MAP },
-                            onCreateReportClick = { currentRoute = AppRoutes.CREATE_REPORT },
+                            onCreateReportClick = {
+                                pendingReportBuildingId = null
+                                currentRoute = AppRoutes.CREATE_REPORT
+                            },
                             modifier = Modifier.padding(innerPadding)
                         )
 
                         AppRoutes.CREATE_REPORT -> CreateReportScreen(
-                            onBackHomeClick = { currentRoute = AppRoutes.HOME },
+                            onBackHomeClick = {
+                                pendingReportBuildingId = null
+                                currentRoute = AppRoutes.HOME
+                            },
                             onReportPrepared = { draft ->
                                 reports.add(
                                     index = 0,
@@ -134,8 +141,10 @@ class MainActivity : ComponentActivity() {
                                         createdAtMillis = System.currentTimeMillis()
                                     )
                                 )
+                                pendingReportBuildingId = null
                                 currentRoute = AppRoutes.REPORT_SUCCESS
                             },
+                            initialBuildingId = pendingReportBuildingId,
                             modifier = Modifier.padding(innerPadding)
                         )
 
@@ -221,8 +230,12 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
 
-                        AppRoutes.CAMPUS_MAP -> ConstructionScreen(
-                            onHomeClick = { currentRoute = AppRoutes.HOME },
+                        AppRoutes.CAMPUS_MAP -> CampusMapScreen(
+                            onCreateReportForBuilding = { buildingId ->
+                                pendingReportBuildingId = buildingId
+                                currentRoute = AppRoutes.CREATE_REPORT
+                            },
+                            onBackHomeClick = { currentRoute = AppRoutes.HOME },
                             modifier = Modifier.padding(innerPadding)
                         )
 
