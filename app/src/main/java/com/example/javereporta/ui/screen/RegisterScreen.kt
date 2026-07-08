@@ -31,7 +31,12 @@ import com.example.javereporta.ui.theme.JaveReportaTheme
 @Composable
 fun RegisterScreen(
     onLoginClick: () -> Unit,
-    onRegisterSuccess: (name: String, email: String, password: String) -> Unit,
+    onRegisterAttempt: (
+        name: String,
+        email: String,
+        password: String,
+        onResult: (RegisterAttemptResult) -> Unit
+    ) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var name by remember { mutableStateOf("") }
@@ -42,7 +47,9 @@ fun RegisterScreen(
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
+    var formError by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -131,22 +138,34 @@ fun RegisterScreen(
                     passwordError == null &&
                     confirmPasswordError == null
                 ) {
-                    onRegisterSuccess(name.trim(), email.trim(), password)
-                }
-                successMessage = if (
-                    nameError == null &&
-                    emailError == null &&
-                    passwordError == null &&
-                    confirmPasswordError == null
-                ) {
-                    "Registro válido."
-                } else {
-                    null
+                    isLoading = true
+                    formError = null
+                    successMessage = null
+                    onRegisterAttempt(name.trim(), email.trim(), password) { registerResult ->
+                        isLoading = false
+                        nameError = registerResult.nameError
+                        emailError = registerResult.emailError
+                        passwordError = registerResult.passwordError
+                        formError = registerResult.formError
+                        successMessage = if (registerResult.isSuccess) {
+                            "Registro valido."
+                        } else {
+                            null
+                        }
+                    }
                 }
             },
+            enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Registrarse")
+            Text(text = if (isLoading) "Registrando..." else "Registrarse")
+        }
+        formError?.let {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error
+            )
         }
         successMessage?.let {
             Spacer(modifier = Modifier.height(12.dp))
@@ -162,13 +181,26 @@ fun RegisterScreen(
     }
 }
 
+data class RegisterAttemptResult(
+    val nameError: String? = null,
+    val emailError: String? = null,
+    val passwordError: String? = null,
+    val formError: String? = null
+) {
+    val isSuccess: Boolean
+        get() = nameError == null &&
+            emailError == null &&
+            passwordError == null &&
+            formError == null
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun RegisterScreenPreview() {
     JaveReportaTheme {
         RegisterScreen(
             onLoginClick = {},
-            onRegisterSuccess = { _, _, _ -> }
+            onRegisterAttempt = { _, _, _, onResult -> onResult(RegisterAttemptResult()) }
         )
     }
 }

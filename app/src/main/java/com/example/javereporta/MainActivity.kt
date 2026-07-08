@@ -12,6 +12,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,26 +32,54 @@ import com.example.javereporta.ui.screen.HomeScreen
 import com.example.javereporta.ui.screen.InitialScreen
 import com.example.javereporta.ui.screen.LoginAttemptResult
 import com.example.javereporta.ui.screen.LoginScreen
+import com.example.javereporta.ui.screen.PasswordResetResult
 import com.example.javereporta.ui.screen.ProfileScreen
+import com.example.javereporta.ui.screen.RegisterAttemptResult
 import com.example.javereporta.ui.screen.RegisterScreen
 import com.example.javereporta.ui.screen.ReportDetailScreen
 import com.example.javereporta.ui.screen.ReportSuccessScreen
 import com.example.javereporta.ui.screen.ReportsListScreen
 import com.example.javereporta.ui.theme.JaveReportaTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            var currentRoute by rememberSaveable { mutableStateOf(AppRoutes.SPLASH) }
+            val firebaseAuth = remember { FirebaseAuth.getInstance() }
+            val userNamesByEmail = remember { mutableStateMapOf<String, String>() }
+            fun currentFirebaseUserAsDomainUser(): User? {
+                val firebaseUser = firebaseAuth.currentUser ?: return null
+                val email = firebaseUser.email.orEmpty()
+                return User(
+                    id = firebaseUser.uid,
+                    name = userNamesByEmail[email.lowercase()]
+                        ?: firebaseUser.displayName
+                        ?: "Usuario",
+                    email = email,
+                    role = UserRole.USER
+                )
+            }
+
+            var currentRoute by rememberSaveable {
+                mutableStateOf(
+                    if (firebaseAuth.currentUser == null) {
+                        AppRoutes.LOGIN
+                    } else {
+                        AppRoutes.HOME
+                    }
+                )
+            }
             var selectedReportId by rememberSaveable { mutableStateOf<String?>(null) }
             var pendingReportBuildingId by rememberSaveable { mutableStateOf<Int?>(null) }
             var nextReportNumber by remember { mutableStateOf(1) }
-            var nextUserNumber by remember { mutableStateOf(1) }
-            var currentUser by remember { mutableStateOf<User?>(null) }
+            var currentUser by remember { mutableStateOf(currentFirebaseUserAsDomainUser()) }
             val reports = remember { mutableStateListOf<Report>() }
-            val registeredUsers = remember { mutableStateListOf<User>() }
 
             JaveReportaTheme {
                 Scaffold(
@@ -68,46 +97,58 @@ class MainActivity : ComponentActivity() {
                         AppRoutes.LOGIN -> LoginScreen(
                             onRegisterClick = { currentRoute = AppRoutes.REGISTER },
                             onForgotPasswordClick = { currentRoute = AppRoutes.FORGOT_PASSWORD },
-                            onLoginAttempt = { email, password ->
-                                val user = registeredUsers.firstOrNull {
-                                    it.email.equals(email, ignoreCase = true)
-                                }
-                                when {
-                                    user == null -> LoginAttemptResult(
-                                        emailError = "No existe una cuenta registrada con este correo."
-                                    )
-                                    user.password != password -> LoginAttemptResult(
-                                        passwordError = "La contraseña no coincide."
-                                    )
-                                    else -> {
-                                        currentUser = user
+                            onLoginAttempt = { email, password, onResult ->
+                                firebaseAuth.signInWithEmailAndPassword(email, password)
+                                    .addOnSuccessListener {
+                                        currentUser = currentFirebaseUserAsDomainUser()
                                         currentRoute = AppRoutes.HOME
-                                        LoginAttemptResult()
+                                        onResult(LoginAttemptResult())
                                     }
-                                }
+                                    .addOnFailureListener { exception ->
+                                        onResult(exception.toLoginAttemptResult())
+                                    }
                             },
                             modifier = Modifier.padding(innerPadding)
                         )
 
                         AppRoutes.REGISTER -> RegisterScreen(
                             onLoginClick = { currentRoute = AppRoutes.LOGIN },
-                            onRegisterSuccess = { name, email, password ->
-                                val user = User(
-                                    id = "local-user-${nextUserNumber++}",
-                                    name = name,
-                                    email = email,
-                                    password = password,
-                                    role = UserRole.USER
-                                )
-                                registeredUsers.add(user)
-                                currentUser = user
-                                currentRoute = AppRoutes.HOME
+                            onRegisterAttempt = { name, email, password, onResult ->
+                                firebaseAuth.createUserWithEmailAndPassword(email, password)
+                                    .addOnSuccessListener { authResult ->
+                                        userNamesByEmail[email.lowercase()] = name
+                                        val firebaseUser = authResult.user
+                                        currentUser = if (firebaseUser == null) {
+                                            currentFirebaseUserAsDomainUser()
+                                        } else {
+                                            User(
+                                                id = firebaseUser.uid,
+                                                name = name,
+                                                email = firebaseUser.email.orEmpty(),
+                                                role = UserRole.USER
+                                            )
+                                        }
+                                        currentRoute = AppRoutes.HOME
+                                        onResult(RegisterAttemptResult())
+                                    }
+                                    .addOnFailureListener { exception ->
+                                        onResult(exception.toRegisterAttemptResult())
+                                    }
                             },
                             modifier = Modifier.padding(innerPadding)
                         )
 
                         AppRoutes.FORGOT_PASSWORD -> ForgotPasswordScreen(
                             onLoginClick = { currentRoute = AppRoutes.LOGIN },
+                            onPasswordResetRequest = { email, onResult ->
+                                firebaseAuth.sendPasswordResetEmail(email)
+                                    .addOnSuccessListener {
+                                        onResult(PasswordResetResult())
+                                    }
+                                    .addOnFailureListener { exception ->
+                                        onResult(exception.toPasswordResetResult())
+                                    }
+                            },
                             modifier = Modifier.padding(innerPadding)
                         )
 
@@ -172,10 +213,10 @@ class MainActivity : ComponentActivity() {
                             onCancelReport = { reportId ->
                                 val reportIndex = reports.indexOfFirst { it.id == reportId }
                                 if (reportIndex >= 0) {
-                                    reports[reportIndex] = reports[reportIndex].copy(
-                                        status = ReportStatus.CANCELADO
-                                    )
+                                    reports.removeAt(reportIndex)
                                 }
+                                selectedReportId = null
+                                currentRoute = AppRoutes.REPORTS_LIST
                             },
                             modifier = Modifier.padding(innerPadding)
                         )
@@ -217,13 +258,11 @@ class MainActivity : ComponentActivity() {
                                 if (user != null) {
                                     val updatedUser = user.copy(name = newName)
                                     currentUser = updatedUser
-                                    val userIndex = registeredUsers.indexOfFirst { it.id == user.id }
-                                    if (userIndex >= 0) {
-                                        registeredUsers[userIndex] = updatedUser
-                                    }
+                                    userNamesByEmail[user.email.lowercase()] = newName
                                 }
                             },
                             onLogoutClick = {
+                                firebaseAuth.signOut()
                                 currentUser = null
                                 currentRoute = AppRoutes.LOGIN
                             },
@@ -257,6 +296,51 @@ private val bottomNavigationRoutes = setOf(
     AppRoutes.PROFILE,
     AppRoutes.CAMPUS_MAP
 )
+
+private fun Exception.toLoginAttemptResult(): LoginAttemptResult {
+    return when (this) {
+        is FirebaseAuthInvalidUserException -> LoginAttemptResult(
+            emailError = "No existe una cuenta registrada con este correo."
+        )
+        is FirebaseAuthInvalidCredentialsException -> LoginAttemptResult(
+            passwordError = "La contrasena no coincide."
+        )
+        else -> LoginAttemptResult(
+            passwordError = "No se pudo iniciar sesion. Revisa tus datos."
+        )
+    }
+}
+
+private fun Exception.toRegisterAttemptResult(): RegisterAttemptResult {
+    return when (this) {
+        is FirebaseAuthUserCollisionException -> RegisterAttemptResult(
+            emailError = "Ya existe una cuenta registrada con este correo."
+        )
+        is FirebaseAuthWeakPasswordException -> RegisterAttemptResult(
+            passwordError = "La contrasena no cumple los requisitos de Firebase."
+        )
+        is FirebaseAuthInvalidCredentialsException -> RegisterAttemptResult(
+            emailError = "Firebase rechazo este correo."
+        )
+        else -> RegisterAttemptResult(
+            formError = "No se pudo crear la cuenta. Intenta de nuevo."
+        )
+    }
+}
+
+private fun Exception.toPasswordResetResult(): PasswordResetResult {
+    return when (this) {
+        is FirebaseAuthInvalidUserException -> PasswordResetResult(
+            emailError = "No existe una cuenta registrada con este correo."
+        )
+        is FirebaseAuthInvalidCredentialsException -> PasswordResetResult(
+            emailError = "El correo no es valido para Firebase."
+        )
+        else -> PasswordResetResult(
+            formError = "No se pudo enviar el correo de recuperacion."
+        )
+    }
+}
 
 @Composable
 private fun JaveReportaBottomBar(

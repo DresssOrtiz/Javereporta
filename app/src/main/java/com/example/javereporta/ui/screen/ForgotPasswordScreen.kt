@@ -28,11 +28,17 @@ import com.example.javereporta.ui.theme.JaveReportaTheme
 @Composable
 fun ForgotPasswordScreen(
     onLoginClick: () -> Unit,
+    onPasswordResetRequest: (
+        email: String,
+        onResult: (PasswordResetResult) -> Unit
+    ) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var email by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf<String?>(null) }
+    var formError by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -64,15 +70,35 @@ fun ForgotPasswordScreen(
         Button(
             onClick = {
                 emailError = AuthValidation.validateEmail(email)
-                successMessage = if (emailError == null) {
-                    "Solicitud de recuperación enviada."
+                formError = null
+                if (emailError == null) {
+                    isLoading = true
+                    successMessage = null
+                    onPasswordResetRequest(email.trim()) { resetResult ->
+                        isLoading = false
+                        emailError = resetResult.emailError
+                        formError = resetResult.formError
+                        successMessage = if (resetResult.isSuccess) {
+                            "Solicitud de recuperacion enviada."
+                        } else {
+                            null
+                        }
+                    }
                 } else {
-                    null
+                    successMessage = null
                 }
             },
+            enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Solicitar recuperación")
+            Text(text = if (isLoading) "Enviando..." else "Solicitar recuperación")
+        }
+        formError?.let {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error
+            )
         }
         successMessage?.let {
             Spacer(modifier = Modifier.height(12.dp))
@@ -88,10 +114,21 @@ fun ForgotPasswordScreen(
     }
 }
 
+data class PasswordResetResult(
+    val emailError: String? = null,
+    val formError: String? = null
+) {
+    val isSuccess: Boolean
+        get() = emailError == null && formError == null
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun ForgotPasswordScreenPreview() {
     JaveReportaTheme {
-        ForgotPasswordScreen(onLoginClick = {})
+        ForgotPasswordScreen(
+            onLoginClick = {},
+            onPasswordResetRequest = { _, onResult -> onResult(PasswordResetResult()) }
+        )
     }
 }

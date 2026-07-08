@@ -30,7 +30,11 @@ import com.example.javereporta.ui.theme.JaveReportaTheme
 fun LoginScreen(
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onLoginAttempt: (email: String, password: String) -> LoginAttemptResult,
+    onLoginAttempt: (
+        email: String,
+        password: String,
+        onResult: (LoginAttemptResult) -> Unit
+    ) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var email by remember { mutableStateOf("") }
@@ -38,6 +42,7 @@ fun LoginScreen(
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -87,17 +92,23 @@ fun LoginScreen(
                 emailError = AuthValidation.validateEmail(email)
                 passwordError = AuthValidation.validatePassword(password)
                 if (emailError == null && passwordError == null) {
-                    successMessage = "Inicio de sesión válido."
-                    val loginResult = onLoginAttempt(email.trim(), password)
-                    emailError = loginResult.emailError
-                    passwordError = loginResult.passwordError
-                    if (!loginResult.isSuccess) {
-                        successMessage = null
+                    isLoading = true
+                    successMessage = null
+                    onLoginAttempt(email.trim(), password) { loginResult ->
+                        isLoading = false
+                        emailError = loginResult.emailError
+                        passwordError = loginResult.passwordError
+                        successMessage = if (loginResult.isSuccess) {
+                            "Inicio de sesion valido."
+                        } else {
+                            null
+                        }
                     }
                 } else {
                     successMessage = null
                 }
             },
+            enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(text = "Iniciar sesión")
@@ -134,7 +145,7 @@ private fun LoginScreenPreview() {
         LoginScreen(
             onRegisterClick = {},
             onForgotPasswordClick = {},
-            onLoginAttempt = { _, _ -> LoginAttemptResult() }
+            onLoginAttempt = { _, _, onResult -> onResult(LoginAttemptResult()) }
         )
     }
 }
